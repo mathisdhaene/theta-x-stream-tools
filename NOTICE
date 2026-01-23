@@ -1,0 +1,10 @@
+This repository contains code and ideas derived from / inspired by:
+
+- RICOH API: libuvc-theta and libuvc-theta-sample
+  https://github.com/ricohapi/libuvc-theta
+  https://github.com/ricohapi/libuvc-theta-sample
+
+- thetauvc helper code by K. Takeo (BSD-style license header preserved in the source files)
+
+This repo does NOT bundle libuvc-theta itself. Users must install Ricoh's patched libuvc
+to enable H.264 over UVC for RICOH THETA devices.

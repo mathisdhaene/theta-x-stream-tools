@@ -1,0 +1,14 @@
+# build artifacts
+*.o
+min_latency_from_uvc
+gst_viewer_vicon
+gst_viewer
+gst_loopback
+
+# outputs
+output_*.mp4
+vicon_*.csv
+
+# core dumps
+core
+core.*
