@@ -188,9 +188,10 @@ int main(int argc, char **argv) {
   uvc_error_t res = uvc_init(&ctx, NULL);
   if (res != UVC_SUCCESS) g_error("uvc_init failed: %d", res);
 
-  // Find/open first UVC device (you can filter by VID/PID if you prefer)
-  res = uvc_find_device(ctx, &dev, 0, 0, NULL);
-  if (res != UVC_SUCCESS || !dev) g_error("THETA not found via UVC");
+  // Find/open first THETA device (filters by THETA VID/PID).
+  // Using plain uvc_find_device(0,0,NULL) is unstable when multiple UVC devices exist.
+  res = thetauvc_find_device(ctx, &dev, 0);
+  if (res != UVC_SUCCESS || !dev) g_error("THETA not found via thetauvc device filter");
   res = uvc_open(dev, &devh);
   if (res != UVC_SUCCESS) g_error("uvc_open failed: %d", res);
 
@@ -239,4 +240,3 @@ int main(int argc, char **argv) {
 
   return 0;
 }
-
