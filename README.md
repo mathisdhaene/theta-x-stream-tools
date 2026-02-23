@@ -1,69 +1,19 @@
 # THETA X streaming tools (libuvc-theta + GStreamer)
 
-Minimal tools to stream **RICOH THETA X** over USB (H.264 over UVC) with **low latency**.
-The camera is accessed via **Ricoh’s patched libuvc (`libuvc-theta`)**, and H.264 frames are fed into GStreamer via `appsrc`.
+Low-latency **RICOH THETA X** streaming over **USB/UVC**.
+`min_latency_from_uvc` opens the camera with `libuvc-theta`, receives H.264 frames, decodes them in GStreamer, and publishes BGR frames via shared memory.
 
-This repository is intended for **research and prototyping** use cases where:
-- latency matters,
-- fine control over buffering is required,
-- integration with OpenCV / Python pipelines is needed,
-- external synchronization (e.g. Vicon, UDP streams) is involved.
+## Important: this tool does not use camera IP
 
----
+- Camera access is USB only (UVC via `libuvc-theta`)
+- No camera Wi-Fi/Ethernet IP is configured in this repo
+- Camera selection is done by USB vendor/product IDs
 
-## What this repo is (and is not)
+## Reproducible Setup
 
-### ✔ What it is
-- Uses **libuvc-theta** directly to open the THETA X
-- Receives **H.264 NAL units** via libuvc callbacks
-- Pushes frames into **custom GStreamer pipelines** via `appsrc`
-- Outputs decoded **BGR frames over shared memory** (for OpenCV, Python, etc.)
+Tested on Ubuntu 20.04 / 22.04.
 
-### ✘ What it is NOT
-- This repo does **not** use the `gstthetauvc` GStreamer plugin
-- This repo does **not** create `/dev/video*` devices
-- This repo does **not** bundle libuvc-theta itself
-
-This design choice gives lower latency and more control than plugin-based approaches.
-
----
-
-## Tools
-
-### `min_latency_from_uvc`
-Ultra–low-latency pipeline:
-
-```
-THETA X (H.264 over UVC)
- → libuvc callback
- → appsrc
- → h264parse
- → decoder
- → videoconvert
- → BGR frames
- → shmsink (/tmp/theta_bgr.sock)
-```
-
-Intended for:
-- OpenCV / Python consumers
-- Real-time processing
-- Research instrumentation
-
----
-
-### `gst_viewer_vicon`
-Live viewer + recorder:
-- GStreamer preview
-- MP4 recording
-- Optional UDP logging (e.g. Vicon per-frame timestamps)
-
----
-
-## Requirements
-
-Tested on **Ubuntu 20.04 / 22.04**.
-
-### 1) Install Ricoh’s patched libuvc
+### 1) Install Ricoh patched `libuvc-theta`
 
 ```bash
 git clone https://github.com/ricohapi/libuvc-theta.git
@@ -74,12 +24,11 @@ make
 sudo make install
 ```
 
----
-
 ### 2) Install dependencies
 
 ```bash
-sudo apt-get install \
+sudo apt-get update
+sudo apt-get install -y \
   libusb-1.0-0-dev \
   libjpeg-dev \
   libgstreamer1.0-dev \
@@ -92,34 +41,61 @@ sudo apt-get install \
   gstreamer1.0-tools
 ```
 
----
-
-## Build
+### 3) Verify THETA X USB ID
 
 ```bash
-make
+lsusb | grep -i theta
 ```
 
----
+Expected for THETA X:
 
-## Run
+```text
+ID 05ca:2717 Ricoh Co., Ltd RICOH THETA X
+```
 
-### Low-latency shared memory stream
+- Vendor ID: `0x05ca`
+- Product ID: `0x2717`
+
+### 4) Build this repo
+
+```bash
+make min_latency_from_uvc
+```
+
+### 5) Run
 
 ```bash
 ./min_latency_from_uvc
 ```
 
-Shared memory socket:
-```
+Shared memory output:
+
+```text
 /tmp/theta_bgr.sock
 ```
 
----
+## How THETA X is detected
+
+`src/thetauvc.c` filters USB devices using:
+
+- `USBVID_RICOH 0x05ca`
+- `USBPID_THETAX_UVC 0x2717`
+
+If you are using a camera with a new/unlisted product ID, add it to the product filter in `src/thetauvc.c`, then rebuild.
+
+## Troubleshooting `THETA not found`
+
+1. Confirm camera appears in `lsusb` with `05ca:2717`.
+2. Confirm `libuvc-theta` is installed (`sudo make install` from its build folder).
+3. Rebuild this repo after any `thetauvc.c` change: `make veryclean && make`.
+4. Ensure no other process is currently using the THETA UVC interface.
+
+## Other target
+
+- `gst_viewer_vicon`: viewer/recorder utility with optional UDP integration.
 
 ## Attribution
 
-Based on:
 - Ricoh API: https://github.com/ricohapi/libuvc-theta
 - Ricoh samples: https://github.com/ricohapi/libuvc-theta-sample
 - thetauvc helper by K. Takeo (BSD-style license)
